@@ -33,7 +33,7 @@
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 
-#define ALOG_TAG "SoftapController"
+#define LOG_TAG "SoftapController"
 #include <cutils/log.h>
 #include <cutils/properties.h>
 
@@ -50,12 +50,12 @@ SoftapController::~SoftapController() {
 }
 
 int SoftapController::startDriver(char *iface) {
-    ALOGD("softAp startDriver called");
+    LOGD("softAp startDriver called");
     return 0;
 }
 
 int SoftapController::stopDriver(char *iface) {
-    ALOGD("softAp stopDriver called");
+    LOGD("softAp stopDriver called");
     return 0;
 }
 
@@ -64,26 +64,26 @@ int SoftapController::initNl() {
 
     nl_soc = nl_socket_alloc();
     if (!nl_soc) {
-        ALOGE("Failed to allocate netlink socket.");
+        LOGE("Failed to allocate netlink socket.");
         return -ENOMEM;
     }
 
     if (genl_connect(nl_soc)) {
-        ALOGE("Failed to connect to generic netlink.");
+        LOGE("Failed to connect to generic netlink.");
         err = -ENOLINK;
         goto out_handle_destroy;
     }
 
     genl_ctrl_alloc_cache(nl_soc, &nl_cache);
     if (!nl_cache) {
-        ALOGE("Failed to allocate generic netlink cache.");
+        LOGE("Failed to allocate generic netlink cache.");
         err = -ENOMEM;
         goto out_handle_destroy;
     }
 
     nl80211 = genl_ctrl_search_by_name(nl_cache, "nl80211");
     if (!nl80211) {
-        ALOGE("nl80211 not found.");
+        LOGE("nl80211 not found.");
         err = -ENOENT;
         goto out_cache_free;
     }
@@ -116,20 +116,20 @@ int SoftapController::executeNlCmd(const char *iface, enum nl80211_iftype type,
     } else {
         devidx = if_nametoindex(iface);
         if (devidx == 0) {
-            ALOGE("failed to translate ifname to idx");
+            LOGE("failed to translate ifname to idx");
             return -errno;
         }
     }
 
     msg = nlmsg_alloc();
     if (!msg) {
-        ALOGE("failed to allocate netlink message");
+        LOGE("failed to allocate netlink message");
         return 2;
     }
 
     cb = nl_cb_alloc(NL_CB_DEFAULT);
     if (!cb) {
-        ALOGE("failed to allocate netlink callbacks");
+        LOGE("failed to allocate netlink callbacks");
         err = 2;
         goto out_free_msg;
     }
@@ -165,7 +165,7 @@ out_free_msg:
     nlmsg_free(msg);
     return err;
 nla_put_failure:
-    ALOGW("building message failed");
+    LOGW("building message failed");
     return 2;
 }
 
@@ -213,7 +213,7 @@ int SoftapController::phyLookup()
     n = scandir("/sys/class/ieee80211", &namelist, dir_filter,
                 (int (*)(const dirent**, const dirent**))alphasort);
     if (n != 1) {
-        ALOGE("unexpected - found %d phys in /sys/class/ieee80211", n);
+        LOGE("unexpected - found %d phys in /sys/class/ieee80211", n);
         for (i = 0; i < n; i++)
             free(namelist[i]);
         free(namelist);
@@ -243,7 +243,7 @@ int SoftapController::switchInterface(bool apMode) {
     int ret;
 
     if (mApMode == apMode) {
-        ALOGD("skipping interface switch. apMode: %d", apMode);
+        LOGD("skipping interface switch. apMode: %d", apMode);
         return 0;
     }
 
@@ -256,7 +256,7 @@ int SoftapController::switchInterface(bool apMode) {
                                 NL80211_IFTYPE_AP,
                                 NL80211_CMD_NEW_INTERFACE);
         if (ret != 0) {
-            ALOGE("could not add AP interface: %d", ret);
+            LOGE("could not add AP interface: %d", ret);
             goto cleanup;
         }
     } else {
@@ -264,12 +264,12 @@ int SoftapController::switchInterface(bool apMode) {
                                 NL80211_IFTYPE_AP,
                                 NL80211_CMD_DEL_INTERFACE);
         if (ret != 0) {
-            ALOGE("could not remove STA interface: %d", ret);
+            LOGE("could not remove STA interface: %d", ret);
             goto cleanup;
         }
     }
 
-    ALOGD("switched interface. apMode: %d", apMode);
+    LOGD("switched interface. apMode: %d", apMode);
     mApMode = apMode;
 
 cleanup:
@@ -282,12 +282,12 @@ int SoftapController::startHostapd() {
     char svc_property[100];
 
     if(mHostapdStarted) {
-        ALOGE("hostapd is started");
+        LOGE("hostapd is started");
         return 0;
     }
 
     if (property_set("ctl.start", HOSTAPD_SERVICE_NAME) < 0) {
-        ALOGE("Failed to start hostapd");
+        LOGE("Failed to start hostapd");
         return -1;
     }
 
@@ -302,13 +302,13 @@ int SoftapController::startHostapd() {
     }
 
     if (strcmp(svc_property,"running") != 0) {
-        ALOGE("failed to start hostapd. state: %s", svc_property);
+        LOGE("failed to start hostapd. state: %s", svc_property);
         return -1;
     }
 
     // give hostapd some more time to actuallly start (connect to driver)
     sleep(2);
-    ALOGD("hostapd started OK");
+    LOGD("hostapd started OK");
     mHostapdStarted = true;
 
     return 0;
@@ -317,11 +317,11 @@ int SoftapController::startHostapd() {
 int SoftapController::stopHostapd() {
 
     if (property_set("ctl.stop", HOSTAPD_SERVICE_NAME) < 0) {
-        ALOGE("Failed to stop hostapd service");
+        LOGE("Failed to stop hostapd service");
     }
 
     usleep(HOSTAPD_STOP_DELAY_US);
-    ALOGD("hostapd successfully stopped");
+    LOGD("hostapd successfully stopped");
     mHostapdStarted = false;
     return 0;
 }
@@ -334,7 +334,7 @@ int SoftapController::startSoftap() {
 int SoftapController::stopSoftap() {
 
     if (!mHostapdStarted) {
-        ALOGE("Softap is stopped");
+        LOGE("Softap is stopped");
         return 0;
     }
 
@@ -346,7 +346,7 @@ int SoftapController::stopSoftap() {
 
 // note: this is valid after setSoftap is called
 bool SoftapController::isSoftapStarted() {
-    ALOGD("returning isSoftapStarted: %d", mHostapdStarted);
+    LOGD("returning isSoftapStarted: %d", mHostapdStarted);
     return mHostapdStarted;
 }
 
@@ -380,13 +380,13 @@ int SoftapController::linkDumpCbHandler(struct nl_msg *msg, void *arg)
 		  genlmsg_attrlen(gnlh, 0), NULL);
 
 	if (!tb[NL80211_ATTR_BSS]) {
-		ALOGD("bss info missing!");
+		LOGD("bss info missing!");
 		return NL_SKIP;
 	}
 	if (nla_parse_nested(bss, NL80211_BSS_MAX,
 			     tb[NL80211_ATTR_BSS],
 			     link_bss_policy)) {
-		ALOGD("failed to parse nested attributes!");
+		LOGD("failed to parse nested attributes!");
 		return NL_SKIP;
 	}
 
@@ -408,7 +408,7 @@ int SoftapController::linkDumpCbHandler(struct nl_msg *msg, void *arg)
 	/* only in the assoc case do we want more info from station get */
 	if (bss[NL80211_BSS_FREQUENCY]) {
 		*sta_freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
-		ALOGD("sta freq: %d", *sta_freq);
+		LOGD("sta freq: %d", *sta_freq);
 	}
 
 	return NL_SKIP;
@@ -426,19 +426,19 @@ int SoftapController::executeScanLinkCmd(const char *iface, int *iface_freq)
 
     devidx = if_nametoindex(iface);
     if (devidx == 0) {
-        ALOGE("failed to translate ifname to idx");
+        LOGE("failed to translate ifname to idx");
         return -errno;
     }
 
     msg = nlmsg_alloc();
     if (!msg) {
-        ALOGE("failed to allocate netlink message");
+        LOGE("failed to allocate netlink message");
         return 2;
     }
 
     cb = nl_cb_alloc(NL_CB_DEFAULT);
     if (!cb) {
-        ALOGE("failed to allocate netlink callbacks");
+        LOGE("failed to allocate netlink callbacks");
         err = 2;
         goto out_free_msg;
     }
@@ -469,7 +469,7 @@ out_free_msg:
     nlmsg_free(msg);
     return err;
 nla_put_failure:
-    ALOGW("building message failed");
+    LOGW("building message failed");
     return 2;
 }
 
@@ -498,7 +498,7 @@ int SoftapController::getStaChanAndMode(int *chan, int *is_g_mode)
             *is_g_mode = 0;
             *chan = (sta_freq - 5000) / 5;
 	} else {
-            ALOGE("frequency %d not supported by SoftApControllerTI", sta_freq);
+            LOGE("frequency %d not supported by SoftApControllerTI", sta_freq);
 	    *chan = 0;
 	}
     }
@@ -525,22 +525,22 @@ int SoftapController::setSoftap(int argc, char *argv[]) {
     int sta_chan, is_g_mode;
 
 
-    ALOGD("%s - %s - %s - %s - %s - %s",argv[2],argv[3],argv[4],argv[5],argv[6],argv[7]);
+    LOGD("%s - %s - %s - %s - %s - %s",argv[2],argv[3],argv[4],argv[5],argv[6],argv[7]);
 
     if (argc < 4) {
-        ALOGE("Softap set - missing arguments");
+        LOGE("Softap set - missing arguments");
         return -1;
     }
 
     FILE* fp = fopen(HOSTAPD_CONF_TEMPLATE_FILE, "r");
     if (!fp) {
-       ALOGE("Softap set - hostapd template file read failed");
+       LOGE("Softap set - hostapd template file read failed");
        return -1;
     }
 
     FILE* fp2 = fopen(HOSTAPD_CONF_FILE, "w");
     if (!fp2) {
-       ALOGE("Softap set - hostapd.conf file read failed");
+       LOGE("Softap set - hostapd.conf file read failed");
        fclose(fp);
        return -1;
     }
@@ -585,7 +585,7 @@ int SoftapController::setSoftap(int argc, char *argv[]) {
         is_g_mode = 1;
     }
 
-    ALOGD("AP starting on channel %d g_mode: %d", sta_chan, is_g_mode);
+    LOGD("AP starting on channel %d g_mode: %d", sta_chan, is_g_mode);
     sprintf(buf, "hw_mode=%s\nchannel=%d\n", is_g_mode ? "g" : "a", sta_chan);
     fputs(buf, fp2);
 
@@ -609,14 +609,14 @@ int SoftapController::setSoftap(int argc, char *argv[]) {
     if (ret != 0)
         goto fail;
 
-    ALOGD("hostapd set - Ok");
+    LOGD("hostapd set - Ok");
     return 0;
 
 fail:
     switchInterface(false);
 fail_switch:
     release_wake_lock(AP_WAKE_LOCK);
-    ALOGD("hostapd set - failed. AP is off.");
+    LOGD("hostapd set - failed. AP is off.");
 
     return ret;
 }
