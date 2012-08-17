@@ -41,10 +41,12 @@ LOCAL_CFLAGS := -Werror=format
 LOCAL_SHARED_LIBRARIES := libstlport libsysutils libcutils libnetutils \
                           libcrypto libhardware_legacy libmdnssd
 
-ifdef USES_TI_MAC80211
-  LOCAL_SRC_FILES += SoftapControllerTI.cpp
+ifdef BOARD_SOFTAP_DEVICE_TI
+    LOCAL_SRC_FILES += SoftapControllerTI.cpp
+    LOCAL_C_INCLUDES += external/libnl-headers
+    LOCAL_STATIC_LIBRARIES += libnl_2
 else
-  LOCAL_SRC_FILES += SoftapController.cpp
+    LOCAL_SRC_FILES += SoftapController.cpp
 endif
 
 
